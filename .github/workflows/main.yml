@@ -1,0 +1,48 @@
+name: 'GitHub-CI: Lint & Test'
+
+on:
+    push:
+        branches:
+            - master
+    pull_request: {}
+
+jobs:
+    lint:
+        name: Verify Tests
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                node: [12,14]
+
+        steps:
+            - name: Checkout repo
+              uses: actions/checkout@v2
+
+            - name: Setup node
+              uses: actions/setup-node@v2
+              with:
+                  node-version: ${{ matrix.node }}
+
+            - name: 📥 Download deps
+              uses: bahmutov/npm-install@v1
+              with:
+                  useLockFile: false
+
+            - name: Lint files
+              if: always()
+              run: |
+                  npm run lint
+ 
+            - name: Check Type Declarations
+              if: always()
+              run: >
+                  sed -i.bak -E '
+                  /devDependencies/,/  \}/{
+                      s/: "\^(.+)"/: "\1"/g; 
+                  }
+                  ' package.json && npm run flow-typed && npm run flow
+
+            - name: Check Test Suites
+              if: always()
+              run: |
+                  npm run karma
